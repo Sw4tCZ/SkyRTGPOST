@@ -165,7 +165,22 @@ class PasswordPrompt(wx.Dialog):
 
 class MyFrame(wx.Frame):
     def __init__(self, parent, title):
-        super().__init__(parent, title=title, size=(350, 500))
+        super().__init__(parent, title=title, size=(350, 300))
+
+        # Get the correct path for the icon
+        if getattr(sys, 'frozen', False):
+            # Running in PyInstaller bundle
+            base_path = sys._MEIPASS
+        else:
+            # Running as a normal script
+            base_path = os.path.dirname(__file__)
+
+        icon_path = os.path.join(base_path, "icon.ico")
+        if os.path.exists(icon_path):
+            self.SetIcon(wx.Icon(icon_path))
+        else:
+            wx.MessageBox(f"Icon not found: {icon_path}", "Error", wx.ICON_ERROR)
+
         self.settings = {}
         self.load_settings()
 
@@ -174,10 +189,8 @@ class MyFrame(wx.Frame):
 
         # Výběr kontroly
         choices = [
-            "SPX by XRY", "SPX by XRY/ETD", "SPX by PHS/ETD", "SPX by VCK/ETD",
-            "SPX by VCK/PHS", "SPX by KC", "SPX by RA/RCVD", "SPX by EXEMPTED-BIOM",
-            "SPX by EXEMPTED-NUCL"
-        ]
+            "SPX by XRY"
+        ] # Add more choices as needed - SPX by XRY, "SPX by XRY/ETD", "SPX by PHS/ETD", "SPX by VCK/ETD", "SPX by VCK/PHS", "SPX by KC", "SPX by RA/RCVD", "SPX by EXEMPTED-BIOM", "SPX by EXEMPTED-NUCL"
         self.radio = wx.RadioBox(panel, label="Vyber kontrolu", choices=choices, style=wx.RA_SPECIFY_ROWS)
         sizer.Add(self.radio, flag=wx.EXPAND|wx.ALL, border=10)
 
@@ -266,6 +279,15 @@ class MyFrame(wx.Frame):
         return f"""^XA
 ^CI28
 ^FO10,10^GB730,173,3^FS
+^FO10,10^GB365,35,3^FS          ; Horní levá buňka
+^FO10,10^GB730,35,3^FS          ; Horní pravá buňka
+^FO10,10^GB730,70,3^FS          ; Střední buňka
+^FO10,10^GB730,140,3^FS         ; Spodní rámeček
+^FO105,150^GB0,30,3^FS            ; První vertikální čára
+^FO245,150^GB0,30,3^FS            ; Druhá vertikální čára
+^FO310,150^GB0,30,3^FS            ; Třetí vertikální čára
+^FO545,150^GB0,30,3^FS            ; Čtvrtá vertikální čára
+^FO625,150^GB0,30,3^FS            ; Pátá vertikální čára
 ^CF0,20,20
 ^FO15,155^FDDate&Time^FS
 ^FO115,155^FD{dt}^FS
@@ -294,54 +316,12 @@ class MyFrame(wx.Frame):
     def usb_print(self, data):
         try:
             import win32print
-            # Attempt to auto-detect a Zebra printer
+            # Attempt to auto-detect a Zebra or ZDesigner printer
             printers = [p[2] for p in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)]
-            printer_name = self.settings.get('printer_name', '') or next((p for p in printers if 'zebra' in p.lower()), None)
+            printer_name = self.settings.get('printer_name', '') or next((p for p in printers if 'zebra' in p.lower() or 'zdesigner' in p.lower()), None)
             if not printer_name:
-                wx.MessageBox("Zebra tiskárna nebyla nalezena.", "Chyba", wx.ICON_ERROR)
+                wx.MessageBox("Zebra nebo ZDesigner tiskárna nebyla nalezena.", "Chyba", wx.ICON_ERROR)
                 return
-            handle = win32print.OpenPrinter(printer_name)
-            try:
-                job_info = win32print.StartDocPrinter(handle, 1, ("Zebra Print Job", None, "RAW"))
-                win32print.StartPagePrinter(handle)
-                win32print.WritePrinter(handle, data.encode('utf-8'))
-                win32print.EndPagePrinter(handle)
-                win32print.EndDocPrinter(handle)
-            finally:
-                win32print.ClosePrinter(handle)
-        except Exception as e:
-            wx.MessageBox(f"Chyba USB tisku: {e}", "Chyba", wx.ICON_ERROR)
-        try:
-            import win32print
-            printer_name = self.settings.get('printer_name', 'Zebra')
-            handle = win32print.OpenPrinter(printer_name)
-            try:
-                job_info = win32print.StartDocPrinter(handle, 1, ("Zebra Print Job", None, "RAW"))
-                win32print.StartPagePrinter(handle)
-                win32print.WritePrinter(handle, data.encode('utf-8'))
-                win32print.EndPagePrinter(handle)
-                win32print.EndDocPrinter(handle)
-            finally:
-                win32print.ClosePrinter(handle)
-        except Exception as e:
-            wx.MessageBox(f"Chyba USB tisku: {e}", "Chyba", wx.ICON_ERROR)
-        try:
-            import win32print
-            printer_name = self.settings.get('printer_name', 'Zebra')
-            handle = win32print.OpenPrinter(printer_name)
-            try:
-                job_info = win32print.StartDocPrinter(handle, 1, ("Zebra Print Job", None, "RAW"))
-                win32print.StartPagePrinter(handle)
-                win32print.WritePrinter(handle, data.encode('utf-8'))
-                win32print.EndPagePrinter(handle)
-                win32print.EndDocPrinter(handle)
-            finally:
-                win32print.ClosePrinter(handle)
-        except Exception as e:
-            wx.MessageBox(f"Chyba USB tisku: {e}", "Chyba", wx.ICON_ERROR)
-        try:
-            import win32print
-            printer_name = self.settings.get('printer_name', 'Zebra')
             handle = win32print.OpenPrinter(printer_name)
             try:
                 job_info = win32print.StartDocPrinter(handle, 1, ("Zebra Print Job", None, "RAW"))
@@ -369,5 +349,5 @@ class MyFrame(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(False)
-    frame = MyFrame(None, "Moje Aplikace")
+    frame = MyFrame(None, "Scprint")
     app.MainLoop()
